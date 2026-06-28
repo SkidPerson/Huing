@@ -154,6 +154,200 @@ local function main()
         local isListVisible = false
         local selectedBtn = nil
 
+        -- ============================================
+        -- JANELA DE EDIÇÃO (abre ao clicar num player)
+        -- baseada no layout LMG2L, dentro do Dex Window
+        -- ============================================
+        local editWindow = nil
+
+        local function openEditWindow(playerName)
+            -- Fecha janela anterior se existir
+            if editWindow then
+                editWindow:Close()
+                editWindow = nil
+            end
+
+            local target = Players:FindFirstChild(playerName)
+            if not target then return end
+
+            -- ── Detecta o que tem no player ──────────────────────
+            local valueObj   = nil   -- ValueBase encontrado
+            local valueType  = nil   -- "inventory" | ClassName do ValueBase | nil
+            local inventory  = nil   -- Folder de inventário
+
+            -- 1. Pasta chamada "Inventory" tem prioridade
+            inventory = target:FindFirstChild("Inventory")
+            if inventory and inventory:IsA("Folder") then
+                valueType = "inventory"
+            else
+                inventory = nil
+                -- 2. Qualquer Folder dentro do player
+                local folder = target:FindFirstChildWhichIsA("Folder")
+                if folder then
+                    inventory = folder
+                    valueType = "inventory"
+                else
+                    -- 3. Qualquer ValueBase direto no player
+                    local found = target:FindFirstChildWhichIsA("ValueBase")
+                    if found then
+                        valueObj  = found
+                        valueType = found.ClassName
+                    end
+                end
+            end
+
+            -- ── Monta o texto inicial do TextBox ─────────────────
+            local initialText = ""
+            local infoText    = ""
+
+            if valueType == "inventory" and inventory then
+                local items = {}
+                for _, child in ipairs(inventory:GetChildren()) do
+                    table.insert(items, child.Name)
+                end
+                -- formato igual ao LMG2L: ["item","item","item"]
+                local quoted = {}
+                for _, v in ipairs(items) do
+                    table.insert(quoted, '"' .. v .. '"')
+                end
+                initialText = '{"Inventory":[' .. table.concat(quoted, ",") .. "]}"
+                infoText    = "Inventory — " .. inventory.Name .. " (" .. #items .. " items)"
+            elseif valueObj then
+                initialText = tostring(valueObj.Value)
+                infoText    = valueObj.ClassName .. " — " .. valueObj.Name
+            else
+                initialText = ""
+                infoText    = "(nenhum value encontrado)"
+            end
+
+            -- ── Cria a Window do Dex ──────────────────────────────
+            editWindow = Lib.Window.new()
+            editWindow:SetTitle("Edit Value — " .. playerName)
+            editWindow:Resize(248, 136)
+
+            local eContent = editWindow.GuiElems.Content
+
+            -- Frame_3 do LMG2L: fundo escuro
+            local bodyFrame = Instance.new("Frame")
+            bodyFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            bodyFrame.BorderSizePixel  = 0
+            bodyFrame.Size             = UDim2.new(1, 0, 1, 0)
+            bodyFrame.Parent           = eContent
+
+            -- Label de info (tipo/nome) no topo — TextLabel_8 do LMG2L
+            local infoLabel = Instance.new("TextLabel")
+            infoLabel.BackgroundTransparency = 1
+            infoLabel.BorderSizePixel        = 0
+            infoLabel.TextSize               = 13
+            infoLabel.FontFace               = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            infoLabel.TextColor3             = Color3.fromRGB(180, 180, 180)
+            infoLabel.TextXAlignment         = Enum.TextXAlignment.Left
+            infoLabel.Size                   = UDim2.new(1, -4, 0, 16)
+            infoLabel.Position               = UDim2.new(0, 4, 0, 8)
+            infoLabel.Text                   = infoText
+            infoLabel.Parent                 = bodyFrame
+
+            -- Label "Value:" — TextLabel_5 do LMG2L
+            local valueLabel = Instance.new("TextLabel")
+            valueLabel.BackgroundTransparency = 1
+            valueLabel.BorderSizePixel        = 0
+            valueLabel.TextSize               = 15
+            valueLabel.FontFace               = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            valueLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+            valueLabel.Size                   = UDim2.new(0, 50, 0, 24)
+            valueLabel.Position               = UDim2.new(0, 0, 0, 32)
+            valueLabel.Text                   = "Value:"
+            valueLabel.Parent                 = bodyFrame
+
+            -- TextBox do valor — TextBox_4 do LMG2L
+            local valueBox = Instance.new("TextBox")
+            valueBox.BackgroundColor3  = Color3.fromRGB(38, 38, 38)
+            valueBox.BorderSizePixel   = 0
+            valueBox.TextXAlignment    = Enum.TextXAlignment.Left
+            valueBox.TextWrapped       = true
+            valueBox.TextSize          = 14
+            valueBox.TextColor3        = Color3.fromRGB(255, 255, 255)
+            valueBox.RichText          = false
+            valueBox.ClipsDescendants  = true
+            valueBox.FontFace          = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            valueBox.Size              = UDim2.new(0, 186, 0, 18)
+            valueBox.Position          = UDim2.new(0, 54, 0, 34)
+            valueBox.Text              = initialText
+            valueBox.Parent            = bodyFrame
+
+            -- Botão Save — TextButton_6 do LMG2L
+            local saveBtn = Instance.new("TextButton")
+            saveBtn.BackgroundColor3 = Color3.fromRGB(69, 69, 69)
+            saveBtn.BorderSizePixel  = 0
+            saveBtn.TextSize         = 15
+            saveBtn.TextColor3       = Color3.fromRGB(150, 150, 150)
+            saveBtn.FontFace         = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            saveBtn.Size             = UDim2.new(0, 110, 0, 22)
+            saveBtn.Position         = UDim2.new(0, 8, 0, 90)
+            saveBtn.Text             = "Save"
+            saveBtn.Parent           = bodyFrame
+
+            -- Botão Cancel — TextButton_7 do LMG2L
+            local cancelBtn = Instance.new("TextButton")
+            cancelBtn.BackgroundColor3 = Color3.fromRGB(69, 69, 69)
+            cancelBtn.BorderSizePixel  = 0
+            cancelBtn.TextSize         = 15
+            cancelBtn.TextColor3       = Color3.fromRGB(210, 210, 210)
+            cancelBtn.FontFace         = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            cancelBtn.Size             = UDim2.new(0, 110, 0, 22)
+            cancelBtn.Position         = UDim2.new(0, 130, 0, 90)
+            cancelBtn.Text             = "Cancel"
+            cancelBtn.Parent           = bodyFrame
+
+            -- ── Save ─────────────────────────────────────────────
+            saveBtn.MouseButton1Click:Connect(function()
+                local raw = valueBox.Text
+                if valueType == "inventory" and inventory then
+                    -- Parse simples: pega tudo entre [ e ] e divide por vírgula
+                    local inner = raw:match("%[(.-)%]")
+                    local source = inner or raw
+                    -- Remove aspas e espaços e recria os filhos
+                    for _, child in ipairs(inventory:GetChildren()) do child:Destroy() end
+                    for item in source:gmatch('"([^"]+)"') do
+                        local sv = Instance.new("StringValue")
+                        sv.Name   = item
+                        sv.Parent = inventory
+                    end
+                    -- Fallback: sem aspas, separado por vírgula
+                    if not source:find('"') then
+                        for item in source:gmatch("[^,]+") do
+                            item = item:match("^%s*(.-)%s*$")
+                            if item ~= "" then
+                                local sv = Instance.new("StringValue")
+                                sv.Name   = item
+                                sv.Parent = inventory
+                            end
+                        end
+                    end
+                elseif valueObj then
+                    if valueType == "BoolValue" then
+                        valueObj.Value = (raw:lower() == "true")
+                    elseif valueType == "IntValue" then
+                        valueObj.Value = math.floor(tonumber(raw) or valueObj.Value)
+                    elseif valueType == "NumberValue" or valueType == "DoubleConstrainedValue" or valueType == "IntConstrainedValue" then
+                        valueObj.Value = tonumber(raw) or valueObj.Value
+                    else
+                        valueObj.Value = raw
+                    end
+                end
+                editWindow:Close()
+                editWindow = nil
+            end)
+
+            -- ── Cancel ───────────────────────────────────────────
+            cancelBtn.MouseButton1Click:Connect(function()
+                editWindow:Close()
+                editWindow = nil
+            end)
+
+            editWindow:Show()
+        end
+
         local function recalcCanvas()
             local total = 24 + (#playerButtons * 18) + 10
             scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(total, 0))
@@ -202,7 +396,7 @@ local function main()
                 end
             end)
 
-            -- Clique: seleciona com fundo azul e mostra no Properties
+            -- Clique: seleciona com fundo azul e abre janela de edição
             btn.MouseButton1Click:Connect(function()
                 -- Desmarca o anterior
                 if selectedBtn and selectedBtn ~= btn then
@@ -218,6 +412,8 @@ local function main()
                 if target and Properties then
                     Properties.ShowInstance(target)
                 end
+
+                openEditWindow(playerName)
             end)
 
             table.insert(playerButtons, btn)
