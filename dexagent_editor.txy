@@ -152,6 +152,7 @@ local function main()
         local LocalPlayer = Players.LocalPlayer
         local playerButtons = {}
         local isListVisible = false
+        local selectedBtn = nil
 
         local function recalcCanvas()
             local total = 24 + (#playerButtons * 18) + 10
@@ -187,20 +188,38 @@ local function main()
                 btn.TextColor3 = Color3.fromRGB(211, 211, 211)
             end
 
-            -- Hover highlight sutil
+            local function setSelected(state)
+                if state then
+                    btn.BackgroundTransparency = 0
+                    btn.BackgroundColor3 = Settings.Theme.ListSelection
+                else
+                    btn.BackgroundTransparency = 1
+                    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                end
+            end
+
+            -- Hover highlight sutil (só se não estiver selecionado)
             btn.MouseEnter:Connect(function()
-                if btn.Visible then
+                if btn.Visible and selectedBtn ~= btn then
                     btn.BackgroundTransparency = 0.8
                     btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
                 end
             end)
             btn.MouseLeave:Connect(function()
-                btn.BackgroundTransparency = 1
-                btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                if selectedBtn ~= btn then
+                    btn.BackgroundTransparency = 1
+                    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                end
             end)
 
-            -- Clique: mostra o player no Properties do Dex
+            -- Clique: seleciona com fundo azul e mostra no Properties
             btn.MouseButton1Click:Connect(function()
+                if selectedBtn and selectedBtn ~= btn then
+                    setSelected(false)
+                end
+                selectedBtn = btn
+                setSelected(true)
+
                 local target = Players:FindFirstChild(playerName)
                 if target and Properties then
                     Properties.ShowInstance(target)
