@@ -138,7 +138,7 @@ local function main()
         playerDataLabel.TextColor3 = Color3.fromRGB(222, 222, 222)
         playerDataLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         playerDataLabel.Size = UDim2.new(0, 138, 0, 10)
-        playerDataLabel.Position = UDim2.new(0, 20, 0, 6)
+        playerDataLabel.Position = UDim2.new(0, 60, 0, 6)
         playerDataLabel.TextXAlignment = Enum.TextXAlignment.Left
         playerDataLabel.Text = "PlayerData"
         playerDataLabel.Parent = scrollFrame
@@ -181,7 +181,7 @@ local function main()
             -- LocalPlayer em dourado, outros em cinza claro
             if isLocalPlayer then
                 btn.Text = playerName
-                btn.TextColor3 = Color3.fromRGB(255, 215, 80)
+                btn.TextColor3 = Color3.fromRGB(211, 211, 211)
             else
                 btn.Text = playerName
                 btn.TextColor3 = Color3.fromRGB(211, 211, 211)
